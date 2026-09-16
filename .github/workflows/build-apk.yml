@@ -1,0 +1,42 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          mkdir -p project
+          unzip -q "$ZIP_FILE" -d project
+
+      - name: Find Android project
+        run: |
+          ANDROID_DIR=$(find project -type f -name "gradlew" -print -quit | xargs -r dirname)
+          if [ -z "$ANDROID_DIR" ]; then
+            echo "Android project not found in ZIP"
+            exit 1
+          fi
+          echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
+
+      - name: Build Debug APK
+        run: |
+          cd "$ANDROID_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vayam-Sarvada-Tracker-APK
+          path: "**/build/outputs/apk/debug/*.apk"
